@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { TableModule } from 'primeng/table';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { TagsService, TagPercentageDto, PagedResult, PrimeNgRequestDto } from '../services/tags.service';
 
 interface Tag {
   name: string;
@@ -17,27 +18,35 @@ interface Tag {
   styleUrl: './tags.component.scss'
 })
 export class TagsComponent implements OnInit {
-  tags: Tag[] = [];
+  tags: TagPercentageDto[] = [];
   loading = false;
+  totalRecords = 0;
 
-  constructor(private http: HttpClient) {}
+  constructor(private tagsService: TagsService) {}
 
   ngOnInit() {
-    this.loadTags();
+    // Lazy loading will handle initial load
   }
 
-  loadTags() {
+  loadTags(event: any) {
     this.loading = true;
-    this.http.get<{ data: Tag[], totalRecords: number }>('http://localhost:8080/api/tags')
-      .subscribe({
-        next: (response) => {
-          this.tags = response.data;
-          this.loading = false;
-        },
-        error: (err) => {
-          console.error(err);
-          this.loading = false;
-        }
-      });
+    const request: PrimeNgRequestDto = {
+      first: event.first,
+      rows: event.rows,
+      sortField: event.sortField,
+      sortOrder: event.sortOrder
+    };
+
+    this.tagsService.getTags(request).subscribe({
+      next: (response: PagedResult<TagPercentageDto>) => {
+        this.tags = response.data;
+        this.totalRecords = response.totalRecords;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.loading = false;
+      }
+    });
   }
 }

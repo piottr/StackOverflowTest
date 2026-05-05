@@ -1,9 +1,9 @@
-<p-table [value]="tags" [loading]="loading" [paginator]="true" [rows]="10">
+<p-table [value]="tags" [loading]="loading" [paginator]="true" [rows]="10" [lazy]="true" (onLazyLoad)="loadTags($event)" [totalRecords]="totalRecords">
   <ng-template pTemplate="header">
     <tr>
-      <th>Name</th>
-      <th>Count</th>
-      <th>Percentage</th>
+      <th pSortableColumn="name">Name <p-sortIcon field="name"></p-sortIcon></th>
+      <th pSortableColumn="count">Count <p-sortIcon field="count"></p-sortIcon></th>
+      <th pSortableColumn="percentage">Percentage <p-sortIcon field="percentage"></p-sortIcon></th>
     </tr>
   </ng-template>
   <ng-template pTemplate="body" let-tag>

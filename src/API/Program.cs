@@ -8,10 +8,11 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseUrls("http://*:8080");
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -33,6 +34,16 @@ builder.Services.AddHttpClient("StackExchangeClient", (sp, client) =>
 builder.Services.AddScoped<IStackOverflowHttpService, StackOverflowHttpService>();
 builder.Services.AddScoped<ITagSyncService, TagSyncService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -50,12 +61,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
+app.UseCors("AllowAll");
+app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseAuthorization();
 
 app.MapControllers();
 
