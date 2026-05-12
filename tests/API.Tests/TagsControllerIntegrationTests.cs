@@ -68,6 +68,71 @@ public class TagsControllerIntegrationTests : IDisposable
         Assert.True(pagedResult.Data.ToList().First().Name == "python");
     }
 
+    [Fact]
+    public async Task Given_TagsInDatabase_When_ForceSync_Then_CallsTagSyncService()
+    {
+        // Arrange
+        _mockTagSyncService.Setup(s => s.ForceSyncAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.ForceSync();
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+        _mockTagSyncService.Verify(s => s.ForceSyncAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Given_LargeDatabaseWithPaging_When_GetTags_Then_ReturnsCorrectPage()
+    {
+        // Arrange - Add more tags to test pagination
+        var additionalTags = Enumerable.Range(1, 20)
+            .Select(i => new Tag 
+            { 
+                Name = $"tag{i}", 
+                Count = 100 * i, 
+                Percentage = i * 2.0m 
+            })
+            .ToList();
+
+        _context.Tags.AddRange(additionalTags);
+        _context.SaveChanges();
+
+        var request = new PrimeNgRequestDto { First = 10, Rows = 10 };
+
+        // Act
+        var result = await _controller.GetTags(request);
+
+        // Assert
+        var pagedResult = Assert.IsType<PagedResult<TagPercentageDto>>(result);
+        Assert.Equal(23, pagedResult.TotalRecords);
+        Assert.Equal(10, pagedResult.Data.Count());
+    }
+
+    [Fact]
+    public async Task Given_EmptyDatabase_When_GetTags_Then_ReturnsEmptyPagedResult()
+    {
+        // Arrange - Create a fresh context with no data
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        var emptyContext = new AppDbContext(options);
+        var emptyController = new TagsController(emptyContext, _mockTagSyncService.Object);
+
+        var request = new PrimeNgRequestDto { First = 0, Rows = 10 };
+
+        // Act
+        var result = await emptyController.GetTags(request);
+
+        // Assert
+        var pagedResult = Assert.IsType<PagedResult<TagPercentageDto>>(result);
+        Assert.Equal(0, pagedResult.TotalRecords);
+        Assert.Empty(pagedResult.Data);
+
+        emptyContext.Dispose();
+    }
+
     public void Dispose()
     {
         _context.Dispose();

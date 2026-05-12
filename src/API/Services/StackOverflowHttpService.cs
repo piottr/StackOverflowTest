@@ -21,12 +21,13 @@ public class StackOverflowHttpService : IStackOverflowHttpService
         var response = await httpClient.GetAsync($"tags?page={page}&pagesize={pageSize}&order=desc&sort=popular&site=stackoverflow");
         response.EnsureSuccessStatusCode();
 
-        var contentStream = await response.Content.ReadAsStreamAsync();
-        var stackExchangeResponse = await JsonSerializer.DeserializeAsync<StackExchangeResponse<TagDto>>(contentStream, new JsonSerializerOptions
+        using (var contentStream = await response.Content.ReadAsStreamAsync())
         {
-            PropertyNameCaseInsensitive = true
-        });
-
-        return stackExchangeResponse?.Items ?? Enumerable.Empty<TagDto>(); 
+            var stackExchangeResponse = await JsonSerializer.DeserializeAsync<StackExchangeResponse<TagDto>>(contentStream, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            return stackExchangeResponse?.Items ?? Enumerable.Empty<TagDto>();
+        }
     }
 }

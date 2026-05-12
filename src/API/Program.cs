@@ -16,7 +16,17 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (builder.Environment.IsEnvironment("Test"))
+    {
+        var dbName = builder.Configuration.GetValue<string>("InMemoryDbName") ?? "TestDb";
+        options.UseInMemoryDatabase(dbName);
+    }
+    else
+    {
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    }
+});
 
 builder.Services.Configure<StackExchangeOptions>(builder.Configuration.GetSection("StackExchange"));
 
@@ -50,10 +60,17 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AppDbContext>();
-    context.Database.Migrate();
 
-    var tagSyncService = services.GetRequiredService<ITagSyncService>();
-    await tagSyncService.SyncTagsIfEmptyAsync();
+    if (app.Environment.IsEnvironment("Test"))
+    {
+        await context.Database.EnsureCreatedAsync();
+    }
+    else
+    {
+        context.Database.Migrate();
+        var tagSyncService = services.GetRequiredService<ITagSyncService>();
+        await tagSyncService.SyncTagsIfEmptyAsync();
+    }
 }
 
 if (app.Environment.IsDevelopment())
